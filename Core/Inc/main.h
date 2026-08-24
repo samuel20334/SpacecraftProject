@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
+#include "MMC5983.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -55,6 +56,20 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void Start_PWM(TIM_HandleTypeDef *timer, uint32_t channel);
+
+void Set_Magnetorquer_PWM(TIM_HandleTypeDef *timer, uint32_t channel, uint8_t duty_cycle);
+
+void Magnetorquer_Command(uint8_t mag_num, uint8_t duty_cycle, bool direction);
+
+void MMC5983_Init(MMC5983_HW_InitTypeDef *magHandle);
+
+void Update_Current_Data(uint32_t *raw, int16_t *data);
+
+void Send_Current_Data(UART_HandleTypeDef *huart, int16_t *current_data);
+
+void Send_Magnetometer_Data(UART_HandleTypeDef *huart, MMC5983_Data_TypeDef *MMC5983_Data);
+
 
 /* USER CODE END EFP */
 

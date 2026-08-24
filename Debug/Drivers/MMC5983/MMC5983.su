@@ -1,0 +1,13 @@
+../Drivers/MMC5983/MMC5983.c:33:23:MMC5983_ID_Verify	24	static
+../Drivers/MMC5983/MMC5983.c:51:23:MMC5983_SW_Reset	16	static
+../Drivers/MMC5983/MMC5983.c:76:23:MMC5983_Set_Bandwidth	16	static
+../Drivers/MMC5983/MMC5983.c:93:23:MMC5983_Set_Operation_Rate	16	static
+../Drivers/MMC5983/MMC5983.c:109:23:MMC5983_Enable_Auto_Set_Reset	16	static
+../Drivers/MMC5983/MMC5983.c:127:23:MMC5983_Set_Output_DataRate	16	static
+../Drivers/MMC5983/MMC5983.c:143:23:MMC5983_Set_Continuous_Measurement	16	static
+../Drivers/MMC5983/MMC5983.c:160:23:MMC5983_Set_Interrupt_Measurement	16	static
+../Drivers/MMC5983/MMC5983.c:180:23:MMC5983_Data_Read	24	static
+../Drivers/MMC5983/MMC5983.c:215:23:MMC5983_SingleRegister_Write	24	static
+../Drivers/MMC5983/MMC5983.c:243:23:MMC5983_SingleRegister_Read	32	static
+../Drivers/MMC5983/MMC5983.c:270:6:enableCS_MMC5983	16	static
+../Drivers/MMC5983/MMC5983.c:280:6:disableCS_MMC5983	16	static

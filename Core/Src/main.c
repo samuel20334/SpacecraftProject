@@ -43,9 +43,17 @@
 #define COILC1_CHANNEL TIM_CHANNEL_1
 #define COILC2_CHANNEL TIM_CHANNEL_2
 
+// Macros for coils
+#define X_COIL 0
+#define Y_COIL 1
+#define Z_COIL 2
+
 // Macros for direction
 #define FORWARD true
 #define REVERSE false
+
+// Number of ADC Channels
+#define TOTAL_ADC_CHANNELS 3
 
 /* USER CODE END PD */
 
@@ -66,7 +74,17 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart4;
 
 /* USER CODE BEGIN PV */
+MMC5983_HW_InitTypeDef MMC5983_Handle = {
+	    .SPIhandler = &hspi2,
+	    .CS_GPIOport = GPIOB,
+	    .CS_GPIOpin = GPIO_PIN_12,
+	    .SPI_Timeout = 100
+	};
 
+MMC5983_Data_TypeDef mag_data;
+
+uint32_t adc_data[TOTAL_ADC_CHANNELS];
+int16_t current_data[TOTAL_ADC_CHANNELS];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,7 +142,10 @@ int main(void)
   MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   // Start ADCs
-  HAL_ADC_Start(&hadc1);
+  HAL_ADC_Start_DMA(&hadc1, adc_data, 3);
+
+  // Initialise magnetometer
+  MMC5983_Init(&MMC5983_Handle);
 
   // Start PWM on all channels
   Start_PWM(&htim1, COILA1_CHANNEL);
@@ -139,7 +160,52 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
+	Magnetorquer_Command(X_COIL, 100, FORWARD);
+	Update_Current_Data(adc_data, current_data);
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+	Send_Current_Data(&huart4, current_data);
+	Send_Magnetometer_Data(&huart4, &mag_data);
+	HAL_Delay(1000);
+
+	Magnetorquer_Command(X_COIL, 100, REVERSE);
+	Update_Current_Data(adc_data, current_data);
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+	Send_Current_Data(&huart4, current_data);
+	Send_Magnetometer_Data(&huart4, &mag_data);
+	HAL_Delay(1000);
+	Magnetorquer_Command(X_COIL, 0, REVERSE);
+
+	Magnetorquer_Command(Y_COIL, 100, FORWARD);
+	Update_Current_Data(adc_data, current_data);
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+	Send_Current_Data(&huart4, current_data);
+	Send_Magnetometer_Data(&huart4, &mag_data);
+	HAL_Delay(1000);
+
+	Magnetorquer_Command(Y_COIL, 100, REVERSE);
+	Update_Current_Data(adc_data, current_data);
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+	Send_Current_Data(&huart4, current_data);
+	Send_Magnetometer_Data(&huart4, &mag_data);
+	HAL_Delay(1000);
+	Magnetorquer_Command(Y_COIL, 0, REVERSE);
+
+	Magnetorquer_Command(Z_COIL, 100, FORWARD);
+	Update_Current_Data(adc_data, current_data);
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+	Send_Current_Data(&huart4, current_data);
+	Send_Magnetometer_Data(&huart4, &mag_data);
+	HAL_Delay(1000);
+
+	Magnetorquer_Command(Z_COIL, 100, REVERSE);
+	Update_Current_Data(adc_data, current_data);
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+	Send_Current_Data(&huart4, current_data);
+	Send_Magnetometer_Data(&huart4, &mag_data);
+	HAL_Delay(1000);
+	Magnetorquer_Command(Z_COIL, 0, REVERSE);
+
+	/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -215,11 +281,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -247,6 +313,24 @@ static void MX_ADC1_Init(void)
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -554,7 +638,7 @@ void Start_PWM(TIM_HandleTypeDef *timer, uint32_t channel) {
 }
 
 void Set_Magnetorquer_PWM(TIM_HandleTypeDef *timer, uint32_t channel, uint8_t duty_cycle) {
-	uint32_t comparVal = ((float)duty_cycle/100)*MAX_OCR
+	uint32_t comparVal = ((float)duty_cycle/100)*MAX_OCR;
 	__HAL_TIM_SET_COMPARE(timer, channel, comparVal);
 }
 
@@ -595,6 +679,58 @@ void Magnetorquer_Command(uint8_t mag_num, uint8_t duty_cycle, bool direction) {
 	}
 
 
+}
+
+void MMC5983_Init(MMC5983_HW_InitTypeDef *magHandle) {
+	if (MMC5983_ID_Verify(magHandle) != MMC_NO_ERROR) {
+	    Error_Handler();
+	}
+
+	MMC5983_SW_Reset(magHandle);
+	MMC5983_Set_Bandwidth(magHandle, MMC_BW_0400);
+	MMC5983_Set_Operation_Rate(magHandle, MMC_SET_0500);
+	MMC5983_Enable_Auto_Set_Reset(magHandle);
+	MMC5983_Set_Output_DataRate(magHandle, MMC_ODR_0100);
+	MMC5983_Set_Continuous_Measurement(magHandle);
+}
+
+void Update_Current_Data(uint32_t *raw, int16_t *data) {
+	for (int ch = 0; ch < TOTAL_ADC_CHANNELS; ch++) {
+		float raw_voltage = 3.3f*(float)raw[ch]/4095;	// convert adc value to voltage
+		float shunt_voltage = raw_voltage / 20; 		// amplifier has gain of 20 V/V
+		float current = shunt_voltage / 0.001;			// calculate current through the shunt
+		data[ch] = (int16_t)(current * 1000);			// cast to int to send
+	}
+}
+
+void Send_Current_Data(UART_HandleTypeDef *huart, int16_t *current_data) {
+	uint8_t data[TOTAL_ADC_CHANNELS*2];
+
+	for (int ch = 0; ch < TOTAL_ADC_CHANNELS; ch++) {
+		uint16_t u_val = (uint16_t)current_data[ch];
+
+		data[2*ch] = (u_val >> 8) & 0xFF;	// big endian encoding
+		data[2*ch + 1] = u_val & 0xFF;
+	}
+
+	HAL_UART_Transmit(huart, data, TOTAL_ADC_CHANNELS*2, 1000);
+}
+
+void Send_Magnetometer_Data(UART_HandleTypeDef *huart, MMC5983_Data_TypeDef *MMC5983_Data) {
+	uint8_t data[6];
+
+	uint16_t uval_x = (uint16_t)MMC5983_Data->axes.DX;
+	uint16_t uval_y = (uint16_t)MMC5983_Data->axes.DY;
+	uint16_t uval_z = (uint16_t)MMC5983_Data->axes.DZ;
+
+	data[0] = (uval_x >> 8) & 0xFF;
+	data[1] = uval_x & 0xFF;
+	data[2] = (uval_y >> 8) & 0xFF;
+	data[3] = uval_y & 0xFF;
+	data[4] = (uval_z >> 8) & 0xFF;
+	data[5] = uval_z & 0xFF;
+
+	HAL_UART_Transmit(huart, data, 6, 1000);
 }
 /* USER CODE END 4 */
 
