@@ -1,0 +1,3 @@
+[submodule "Drivers/MMC5983"]
+	path = Drivers/MMC5983
+	url = https://github.com/NathanNetzel/MMC5983-STM32-HAL-Driver.git
