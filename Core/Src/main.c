@@ -72,6 +72,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 MMC5983_HW_InitTypeDef MMC5983_Handle = {
@@ -85,6 +86,19 @@ MMC5983_Data_TypeDef mag_data;
 
 uint32_t adc_data[TOTAL_ADC_CHANNELS];
 int16_t current_data[TOTAL_ADC_CHANNELS];
+
+static uint8_t uartRxData[8] = {0};
+
+// flags
+bool coilCommandFlag = false;
+bool currentReadingFlag = false;
+bool magReadingFlag = false;
+bool powerProfileFlag = false;
+
+// variables for storing sent params
+int8_t xDutyCycle = 0;
+int8_t yDutyCycle = 0;
+int8_t zDutyCycle = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,6 +110,7 @@ static void MX_SPI2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_UART4_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -140,7 +155,13 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM3_Init();
   MX_UART4_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  if (HAL_UART_Receive_IT(&huart4, uartRxData, 4) != HAL_OK)
+  {
+	  Error_Handler();
+  }
   // Start ADCs
   HAL_ADC_Start_DMA(&hadc1, adc_data, 3);
 
@@ -160,52 +181,36 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	Magnetorquer_Command(X_COIL, 100, FORWARD);
-	Update_Current_Data(adc_data, current_data);
-	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
-	Send_Current_Data(&huart4, current_data);
-	Send_Magnetometer_Data(&huart4, &mag_data);
-	HAL_Delay(1000);
+	if (coilCommandFlag) {
+		if (abs(xDutyCycle) > 100) xDutyCycle = 0;
+		if (abs(yDutyCycle) > 100) xDutyCycle = 0;
+		if (abs(zDutyCycle) > 100) xDutyCycle = 0;
 
-	Magnetorquer_Command(X_COIL, 100, REVERSE);
-	Update_Current_Data(adc_data, current_data);
-	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
-	Send_Current_Data(&huart4, current_data);
-	Send_Magnetometer_Data(&huart4, &mag_data);
-	HAL_Delay(1000);
-	Magnetorquer_Command(X_COIL, 0, REVERSE);
+		XYZ_Command(xDutyCycle, yDutyCycle, zDutyCycle);
 
-	Magnetorquer_Command(Y_COIL, 100, FORWARD);
-	Update_Current_Data(adc_data, current_data);
-	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
-	Send_Current_Data(&huart4, current_data);
-	Send_Magnetometer_Data(&huart4, &mag_data);
-	HAL_Delay(1000);
+		coilCommandFlag = false;
+	}
 
-	Magnetorquer_Command(Y_COIL, 100, REVERSE);
-	Update_Current_Data(adc_data, current_data);
-	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
-	Send_Current_Data(&huart4, current_data);
-	Send_Magnetometer_Data(&huart4, &mag_data);
-	HAL_Delay(1000);
-	Magnetorquer_Command(Y_COIL, 0, REVERSE);
+	if (currentReadingFlag) {
+		Update_Current_Data(adc_data, current_data);
+		Send_Current_Data(&huart4, current_data);
 
-	Magnetorquer_Command(Z_COIL, 100, FORWARD);
-	Update_Current_Data(adc_data, current_data);
-	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
-	Send_Current_Data(&huart4, current_data);
-	Send_Magnetometer_Data(&huart4, &mag_data);
-	HAL_Delay(1000);
+		currentReadingFlag = false;
+	}
 
-	Magnetorquer_Command(Z_COIL, 100, REVERSE);
-	Update_Current_Data(adc_data, current_data);
-	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
-	Send_Current_Data(&huart4, current_data);
-	Send_Magnetometer_Data(&huart4, &mag_data);
-	HAL_Delay(1000);
-	Magnetorquer_Command(Z_COIL, 0, REVERSE);
+	if (magReadingFlag) {
+		MMC5983_Data_Read(&MMC5983_Handle, &mag_data);
+		Send_Magnetometer_Data(&huart4, &mag_data);
 
-	/* USER CODE END WHILE */
+		magReadingFlag = false;
+	}
+
+	if (testRoutineFlag) {
+		runPowerProfile();
+
+		powerProfileFlag = false;
+	}
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -571,6 +576,41 @@ static void MX_UART4_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -631,6 +671,43 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+// Callback for UART hardware interrupt
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
+{
+
+	switch (uartRxData[0]) {
+	case 0x00:
+		// Send coil command
+		coilCommandFlag = true;
+		xDutyCycle = uartRxData[1];
+		yDutyCycle = uartRxData[2];
+		zDutyCycle = uartRxData[3];
+		break;
+
+	case 0x01:
+		// Read current data
+		currentReadingFlag = true;
+		break;
+
+	case 0x02:
+		// Read magnetometer data
+		magReadingFlag = true;
+		break;
+
+	case 0x03:
+		// run test routine
+		powerProfileFlag = false;
+		break;
+	}
+
+
+    // Receive next
+	if (HAL_UART_Receive_IT(huart, uartRxData, 4) != HAL_OK)
+	{
+	    Error_Handler();
+	}
+}
+
 void Start_PWM(TIM_HandleTypeDef *timer, uint32_t channel) {
 	if (HAL_TIM_PWM_Start(timer, channel) != HAL_OK) {
 		Error_Handler();
@@ -638,8 +715,8 @@ void Start_PWM(TIM_HandleTypeDef *timer, uint32_t channel) {
 }
 
 void Set_Magnetorquer_PWM(TIM_HandleTypeDef *timer, uint32_t channel, uint8_t duty_cycle) {
-	uint32_t comparVal = ((float)duty_cycle/100)*MAX_OCR;
-	__HAL_TIM_SET_COMPARE(timer, channel, comparVal);
+	uint32_t comparVal = ((float)duty_cycle/100)*MAX_OCR;	// calculate compare value from duty cycle
+	__HAL_TIM_SET_COMPARE(timer, channel, comparVal);		// set the compare value
 }
 
 void Magnetorquer_Command(uint8_t mag_num, uint8_t duty_cycle, bool direction) {
@@ -648,22 +725,22 @@ void Magnetorquer_Command(uint8_t mag_num, uint8_t duty_cycle, bool direction) {
 	TIM_HandleTypeDef timer;
 
 	switch(mag_num) {
-	case 0:
+	case 0:		// x coil
 		timer = htim1;
 		channel1 = COILA1_CHANNEL;
 		channel2 = COILA2_CHANNEL;
 		break;
-	case 1:
+	case 1:		// y coil
 		timer = htim1;
 		channel1 = COILB1_CHANNEL;
 		channel2 = COILB2_CHANNEL;
 		break;
-	case 2:
+	case 2:		// z coil
 		timer = htim3;
 		channel1 = COILC1_CHANNEL;
 		channel2 = COILC2_CHANNEL;
 		break;
-	default:
+	default:	// pick the x coil by default
 		timer = htim1;
 		channel1 = COILA1_CHANNEL;
 		channel2 = COILA2_CHANNEL;
@@ -671,14 +748,92 @@ void Magnetorquer_Command(uint8_t mag_num, uint8_t duty_cycle, bool direction) {
 	}
 
 	if (direction == FORWARD) {
-		Set_Magnetorquer_PWM(&timer, channel1, duty_cycle);
-		Set_Magnetorquer_PWM(&timer, channel2, 0);
+		Set_Magnetorquer_PWM(&timer, channel1, duty_cycle);	// set PWM
+		Set_Magnetorquer_PWM(&timer, channel2, 0);			// drive coil forwards
 	} else {
-		Set_Magnetorquer_PWM(&timer, channel1, 0);
-		Set_Magnetorquer_PWM(&timer, channel2, duty_cycle);
+		Set_Magnetorquer_PWM(&timer, channel1, 0);			// drive coil backwards
+		Set_Magnetorquer_PWM(&timer, channel2, duty_cycle);	// set PWM
 	}
 
 
+}
+
+void XYZ_Command(int8_t xDuty, int8_t yDuty, int8_t zDuty) {
+	uint8_t xDutyCycle = abs(xDuty);	// find magnitude of duty cycles
+	uint8_t yDutyCycle = abs(xDuty);
+	uint8_t zDutyCycle = abs(xDuty);
+
+	bool xDirection;
+	bool yDirection;
+	bool zDirection;
+
+	xDirection = (xDuty > 0) ? FORWARD : REVERSE;	// set directions according to sign of duty cycle input
+	yDirection = (yDuty > 0) ? FORWARD : REVERSE;
+	zDirection = (zDuty > 0) ? FORWARD : REVERSE;
+
+	Magnetorquer_Command(X_COIL, xDutyCycle, xDirection);	// send magnetorquer commands
+	Magnetorquer_Command(Y_COIL, yDutyCycle, yDirection);
+	Magnetorquer_Command(Z_COIL, zDutyCycle, zDirection);
+}
+
+void testCoil(int8_t xDuty, int8_t yDuty, int8_t zDuty) {
+	XYZ_Command(xDuty, yDuty, zDuty);					// drive coils
+	Update_Current_Data(adc_data, current_data);		// update current data
+	MMC5983_Data_Read(&MMC5983_Handle, &mag_data);		// read magnetometer data
+	Send_Current_Data(&huart4, current_data);			// send current data
+	Send_Magnetometer_Data(&huart4, &mag_data);			// send magnetometer data
+}
+
+void runPowerProfile(void) {
+	testCoil(100, 0, 0);	// drive X coil fully forward
+	HAL_Delay(20000);
+	testCoil(-100, 0, 0);	// drive X coil fully reverse
+	HAL_Delay(20000);
+	testCoil(0, 0, 0);		// de-energise X coil
+
+	testCoil(0, 100, 0);	// drive Y coil fully forward
+	HAL_Delay(20000);
+	testCoil(0, -100, 0);	// drive Y coil fully reverse
+	HAL_Delay(20000);
+	testCoil(0, 0, 0);		// de-energise Y coil
+
+	testCoil(0, 0, 100);	// drive Z coil fully forward
+	HAL_Delay(20000);
+	testCoil(0, 0, -100);	// drive Z coil fully reverse
+	HAL_Delay(20000);
+	testCoil(0, 0, 0);		// de-energise Z coil
+}
+
+void runFunctionalTest(void) {
+	for (int i = 0; i <= 100; i += 10) {	// set x coil duty cycle in increments of 10%
+		testCoil(i, 0, 0);
+		HAL_Delay(20000);
+
+		testCoil(-i, 0, 0);
+		HAL_Delay(20000);
+	}
+
+	testCoil(0, 0, 0);
+
+	for (int i = 0; i <= 100; i += 10) {	// set y coil duty cycle in increments of 10%
+		testCoil(0, i, 0);
+		HAL_Delay(20000);
+
+		testCoil(0, -i, 0);
+		HAL_Delay(20000);
+	}
+
+	testCoil(0, 0, 0);
+
+	for (int i = 0; i <= 100; i += 10) {	// set z coil duty cycle in increments of 10%
+		testCoil(0, 0, i);
+		HAL_Delay(20000);
+
+		testCoil(0, 0, -i);
+		HAL_Delay(20000);
+	}
+
+	testCoil(0, 0, 0);
 }
 
 void MMC5983_Init(MMC5983_HW_InitTypeDef *magHandle) {
