@@ -1,0 +1,24 @@
+# === STM32CubeIDE build output ===
+Debug/
+Release/
+build/
+
+# === STM32CubeIDE/Eclipse local workspace state (not needed to re-import the project) ===
+.metadata/
+.settings/
+
+# === Compiler/linker intermediates (in case build dir isn't fully caught above) ===
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.list
+*.map
+*.bin
+*.hex
+
+# === OS/editor cruft ===
+.DS_Store
+Thumbs.db
+*.swp
