@@ -94,6 +94,7 @@ bool coilCommandFlag = false;
 bool currentReadingFlag = false;
 bool magReadingFlag = false;
 bool powerProfileFlag = false;
+bool testRoutineFlag = false;
 
 // variables for storing sent params
 int8_t xDutyCycle = 0;
@@ -205,10 +206,16 @@ int main(void)
 		magReadingFlag = false;
 	}
 
-	if (testRoutineFlag) {
+	if (powerProfileFlag) {
 		runPowerProfile();
 
 		powerProfileFlag = false;
+	}
+
+	if (testRoutineFlag) {
+		runFunctionalTest();
+
+		testRoutineFlag = false;
 	}
     /* USER CODE END WHILE */
 
@@ -695,8 +702,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
 		break;
 
 	case 0x03:
-		// run test routine
-		powerProfileFlag = false;
+		// run power profile test
+		powerProfileFlag = true;
+		break;
+
+	case 0x04:
+		// run functional test
+		testRoutineFlag = true;
 		break;
 	}
 

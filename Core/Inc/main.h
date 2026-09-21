@@ -101,7 +101,7 @@ void runPowerProfile(void);
 // @brief	Run automated test routine to drive coils with duty cycle in increments of 10%
 // @param	None
 // @retval	None
-void runFunctionalTest(void)
+void runFunctionalTest(void);
 
 // @brief	Initialise the MMC5983 magnetometer
 // @param	magHandle	:	pointer to magnetometer object handle
