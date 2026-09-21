@@ -98,7 +98,7 @@ void testCoil(int8_t xDuty, int8_t yDuty, int8_t zDuty);
 // @retval	None
 void runPowerProfile(void);
 
-// @brief	Run automated test routine to drive coils with duty cycle in increments of 10%
+// @brief	Run automated test routine to drive coils with duty cycle in increments of 20%
 // @param	None
 // @retval	None
 void runFunctionalTest(void);

@@ -829,7 +829,7 @@ void runFunctionalTest(void) {
 	uint8_t serial_string[128] = "";
 	sprintf((char *)serial_string, "Take magnetometer measurements.\r\n");
 
-	for (int i = 0; i <= 100; i += 20) {	// set x coil duty cycle in increments of 10%
+	for (int i = 0; i <= 100; i += 20) {	// set x coil duty cycle in increments of 20%
 		testCoil(i, 0, 0);
 		HAL_UART_Transmit(&huart4, serial_string, strlen(serial_string), 10);
 		HAL_Delay(20000);
@@ -841,7 +841,7 @@ void runFunctionalTest(void) {
 
 	testCoil(0, 0, 0);
 
-	for (int i = 0; i <= 100; i += 20) {	// set y coil duty cycle in increments of 10%
+	for (int i = 0; i <= 100; i += 20) {	// set y coil duty cycle in increments of 20%
 		testCoil(0, i, 0);
 		HAL_UART_Transmit(&huart4, serial_string, strlen(serial_string), 10);
 		HAL_Delay(20000);
@@ -853,7 +853,7 @@ void runFunctionalTest(void) {
 
 	testCoil(0, 0, 0);
 
-	for (int i = 0; i <= 100; i += 20) {	// set z coil duty cycle in increments of 10%
+	for (int i = 0; i <= 100; i += 20) {	// set z coil duty cycle in increments of 20%
 		testCoil(0, 0, i);
 		HAL_UART_Transmit(&huart4, serial_string, strlen(serial_string), 10);
 		HAL_Delay(20000);
